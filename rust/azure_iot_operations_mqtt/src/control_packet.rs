@@ -5,19 +5,21 @@
 
 // TODO: Re-implement these instead of just aliasing / add to rumqttc adapter
 
+use bytes::Bytes;
+
 /// Quality of Service
-pub type QoS = rumqttc::v5::mqttbytes::QoS;
+pub type QoS = codec::packet::QoS;
 
 /// PUBLISH packet
-pub type Publish = rumqttc::v5::mqttbytes::v5::Publish;
+pub type Publish = codec::packet::Publish<Bytes>;
 
 /// Properties for a CONNECT packet
-pub type ConnectProperties = rumqttc::v5::mqttbytes::v5::ConnectProperties;
+pub type ConnectProperties = codec::packet::ConnectProperties<Bytes>;
 /// Properties for a PUBLISH packet
-pub type PublishProperties = rumqttc::v5::mqttbytes::v5::PublishProperties;
+pub type PublishProperties = codec::packet::PublishProperties<Bytes>;
 /// Properties for a SUBSCRIBE packet
-pub type SubscribeProperties = rumqttc::v5::mqttbytes::v5::SubscribeProperties;
+pub type SubscribeProperties = codec::packet::SubscribeProperties<Bytes>;
 /// Properties for a UNSUBSCRIBE packet
-pub type UnsubscribeProperties = rumqttc::v5::mqttbytes::v5::UnsubscribeProperties;
+pub type UnsubscribeProperties = codec::packet::UnsubscribeProperties<Bytes>;
 /// Properties for an AUTH packet
 pub type AuthProperties = rumqttc::v5::mqttbytes::v5::AuthProperties;

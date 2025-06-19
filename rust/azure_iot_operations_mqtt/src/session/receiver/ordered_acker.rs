@@ -197,7 +197,9 @@ mod tests {
     fn create_publish_qos(topic_name: &TopicName, payload: &str, pkid: u16, qos: QoS) -> Publish {
         // NOTE: We use the TopicName here for convenience. No other reason.
         // NOTE: If QoS is 0, this WILL OVERRIDE THE PKID (since pkid 0 for QoS 0)
-        let mut publish = Publish::new(topic_name.as_str(), qos, payload.to_string(), None);
+        let mut publish = codec::packet::PublishBuilder::new(topic_name.to_string(), qos, payload.to_string())
+            .with_retain(false)
+            .build();
         if qos != QoS::AtMostOnce {
             publish.pkid = pkid;
         }

@@ -8,11 +8,11 @@ use std::fmt;
 use thiserror::Error;
 
 /// Error type for MQTT connection
-pub type ConnectionError = rumqttc::v5::ConnectionError;
+pub type ConnectionError = client::Error;
 /// Error type for completion tokens
-pub type CompletionError = rumqttc::NoticeError;
+pub type CompletionError = client::token::CompletionError;
 /// Error subtype for MQTT connection error caused by state
-pub type StateError = rumqttc::v5::StateError;
+pub type StateError = client::Error;
 
 // NOTE: While these errors may seem redundant and candidates for consolidation, we need this
 // flexibility because the same error types are used in both the low-level and high-level APIs.

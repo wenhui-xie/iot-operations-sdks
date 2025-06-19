@@ -51,11 +51,13 @@ impl std::future::Future for CompletionToken {
 // Only once there are non-rumqttc implementations of these can we allow non-rumqttc compilations
 
 /// Event yielded by the event loop
-pub type Event = rumqttc::v5::Event;
+// FIXME: No Event in unified mqtt client.
+pub type Event = ();
 /// Incoming data on the event loop
-pub type Incoming = rumqttc::v5::Incoming;
+pub type Incoming = ();
 /// Outgoing data on the event loop
-pub type Outgoing = rumqttc::Outgoing;
+pub type Outgoing = ();
+pub type PublishCallback<B> = Box<dyn client::PublishCallback<B>>;
 
 // ---------- Lower level MQTT abstractions ----------
 
@@ -153,7 +155,7 @@ pub trait MqttClient: MqttPubSub + MqttAck + MqttDisconnect {
 }
 
 /// MQTT Event Loop manipulation
-#[async_trait]
+#[async_trait(?Send)]
 pub trait MqttEventLoop {
     /// Poll the event loop for the next [`Event`]
     async fn poll(&mut self) -> Result<Event, ConnectionError>;
@@ -166,6 +168,8 @@ pub trait MqttEventLoop {
 
     /// Set the authentication data
     fn set_authentication_data(&mut self, authentication_data: Option<Bytes>);
+
+    fn set_publish_callback(&mut self, callback: PublishCallback<Bytes>) {}
 }
 
 // ---------- Higher level MQTT abstractions ----------

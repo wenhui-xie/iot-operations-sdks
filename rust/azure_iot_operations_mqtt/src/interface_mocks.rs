@@ -351,12 +351,12 @@ impl MockEventLoop {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl MqttEventLoop for MockEventLoop {
     async fn poll(&mut self) -> Result<Event, ConnectionError> {
         match self.rx.recv().await {
             Some(e) => Ok(e),
-            None => Err(ConnectionError::RequestsDone),
+            None => Err(ConnectionError::UnexpectedEof),
         }
     }
 
@@ -402,7 +402,7 @@ mod test {
         let subscribe1_topic = "test/subscribe/topic/1";
         let subscribe2_topic = "test/subscribe/topic/2";
         let subscribe2_properties = SubscribeProperties {
-            id: None,
+            subscription_identifier: None,
             user_properties: vec![("sub2key".to_string(), "sub2value".to_string())],
         };
         let unsubscribe1_topic = "test/unsubscribe/topic/1";
@@ -549,7 +549,7 @@ mod test {
         let subscribe1_topic = "test/subscribe/topic/1";
         let subscribe2_topic = "test/subscribe/topic/2";
         let subscribe2_properties = SubscribeProperties {
-            id: None,
+            subscription_identifier: None,
             user_properties: vec![("sub2key".to_string(), "sub2value".to_string())],
         };
         let unsubscribe1_topic = "test/unsubscribe/topic/1";

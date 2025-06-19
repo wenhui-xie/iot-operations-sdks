@@ -134,6 +134,7 @@ impl PublishReceiverManager {
 }
 
 /// Manager for creating and dispatching messages to [`PublishRx`]s.
+#[derive(Clone)]
 pub struct IncomingPublishDispatcher<A>
 where
     A: MqttAck + Clone + Send + Sync + 'static,
@@ -182,7 +183,7 @@ where
     ///
     /// # Errors
     /// Returns a [`DispatchError`] if the dispatch fails.
-    pub fn dispatch_publish(&mut self, publish: &Publish) -> Result<usize, DispatchError> {
+    pub fn dispatch_publish(&self, publish: &Publish) -> Result<usize, DispatchError> {
         let topic_name = extract_publish_topic_name(publish)?;
 
         // Check if the incoming publish is a duplicate of a publish that is already in the
@@ -261,7 +262,7 @@ where
 
     /// Dispatch to filtered receivers
     fn dispatch_filtered(
-        &mut self,
+        &self,
         topic_name: &TopicName,
         publish: &Publish,
         plenary_ack: Option<&PlenaryAck>,
@@ -305,7 +306,7 @@ where
 
     /// Dispatch to unfiltered receivers
     fn dispatch_unfiltered(
-        &mut self,
+        &self,
         publish: &Publish,
         plenary_ack: Option<&PlenaryAck>,
     ) -> usize {
@@ -337,7 +338,7 @@ where
 
 fn extract_publish_topic_name(publish: &Publish) -> Result<TopicName, InvalidPublish> {
     Ok(TopicName::from_string(String::from_utf8(
-        publish.topic.to_vec(),
+        publish.topic.to_string().into_bytes(),
     )?)?)
 }
 
@@ -357,12 +358,11 @@ mod tests {
 
     fn create_publish(topic_name: &TopicName, payload: &str, pkid: u16) -> Publish {
         // NOTE: We use the TopicName here for convenience. No other reason.
-        let mut publish = Publish::new(
-            topic_name.as_str(),
+        let mut publish = codec::packet::PublishBuilder::new(
+            topic_name.to_string(),
             QoS::AtLeastOnce,
             payload.to_string(),
-            None,
-        );
+        ).build();
         publish.pkid = pkid;
         publish
     }
@@ -370,7 +370,8 @@ mod tests {
     fn create_publish_qos(topic_name: &TopicName, payload: &str, pkid: u16, qos: QoS) -> Publish {
         // NOTE: We use the TopicName here for convenience. No other reason.
         // NOTE: If QoS is 0, this WILL OVERRIDE THE PKID (since pkid 0 for QoS 0)
-        let mut publish = Publish::new(topic_name.as_str(), qos, payload.to_string(), None);
+        let mut publish = codec::packet::PublishBuilder::new(topic_name.to_string(), qos, payload.to_string())
+            .build();
         if qos != QoS::AtMostOnce {
             publish.pkid = pkid;
         }
@@ -793,7 +794,8 @@ mod tests {
         // Dispatch a publish with an invalid topic name
         let invalid_topic_name = "";
         assert!(!TopicName::is_valid_topic_name(invalid_topic_name));
-        let publish = Publish::new(invalid_topic_name, qos, "some payload", None);
+        let publish = codec::packet::PublishBuilder::new(invalid_topic_name, qos, "some payload".to_string())
+            .build();
         assert!(matches!(
             dispatcher.dispatch_publish(&publish).unwrap_err(),
             DispatchError::InvalidPublishTopic(_)
