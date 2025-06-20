@@ -42,7 +42,7 @@ where
     /// Receiver dispatcher for incoming publishes
     incoming_pub_dispatcher: IncomingPublishDispatcher<C>,
     /// Reconnect policy
-    reconnect_policy: Box<dyn ReconnectPolicy>,
+    //reconnect_policy: Box<dyn ReconnectPolicy>,
     /// Current state
     state: Arc<SessionState>,
     /// Notifier for a force exit signal
@@ -67,6 +67,8 @@ where
         let incoming_pub_dispatcher = IncomingPublishDispatcher::new(client.clone());
         let receiver_manager = incoming_pub_dispatcher.get_receiver_manager();
         event_loop.set_publish_callback(Box::new(incoming_pub_dispatcher.clone()));
+        let state = Arc::new(SessionState::default());
+        event_loop.set_connection_callback(state.clone(), reconnect_policy);
 
         Self {
             client,
@@ -75,8 +77,8 @@ where
             sat_file,
             receiver_manager,
             incoming_pub_dispatcher,
-            reconnect_policy,
-            state: Arc::new(SessionState::default()),
+            //reconnect_policy,
+            state: state,
             notify_force_exit: Arc::new(Notify::new()),
         }
     }
@@ -157,13 +159,7 @@ where
             run_background(client, sat_auth_context, cancel_token)
         });
 
-        // Run the session unless a force exit occurs.
-        tokio::select! {
-            // Ensure that the force exit signal is checked first.
-            biased;
-            _ = self.notify_force_exit.notified() => { },
-            _ = self.event_loop.poll() => { },
-        };
+        let _ = self.event_loop.poll().await;
 
         // // Indicates whether this session has been previously connected
         // let mut prev_connected = false;

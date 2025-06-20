@@ -5,6 +5,7 @@
 
 use async_trait::async_trait;
 use bytes::Bytes;
+use std::sync::Arc;
 
 use crate::control_packet::{
     AuthProperties, Publish, PublishProperties, QoS, SubscribeProperties, UnsubscribeProperties,
@@ -14,6 +15,9 @@ use crate::error::{
     SubscribeError, UnsubscribeError,
 };
 pub use crate::session::receiver::AckToken; // TODO: remove this pub re-export after concretized receivers / managed clients
+use crate::session::reconnect_policy::ReconnectPolicy;
+use crate::session::state::SessionState;
+
 use crate::topic::TopicParseError;
 
 // ---------- Concrete Types ----------
@@ -57,7 +61,8 @@ pub type Event = ();
 pub type Incoming = ();
 /// Outgoing data on the event loop
 pub type Outgoing = ();
-pub type PublishCallback<B> = Box<dyn client::PublishCallback<B>>;
+/// Publish callback
+pub type PublishCallback = Box<dyn client::PublishCallback<Bytes>>;
 
 // ---------- Lower level MQTT abstractions ----------
 
@@ -169,7 +174,11 @@ pub trait MqttEventLoop {
     /// Set the authentication data
     fn set_authentication_data(&mut self, authentication_data: Option<Bytes>);
 
-    fn set_publish_callback(&mut self, callback: PublishCallback<Bytes>) {}
+    /// Set publish callback
+    fn set_publish_callback(&mut self, callback: PublishCallback) {}
+
+    /// Set connection callback
+    fn set_connection_callback(&mut self, state: Arc<SessionState>, reconnect_policy: Box<dyn ReconnectPolicy>) {}
 }
 
 // ---------- Higher level MQTT abstractions ----------

@@ -8,7 +8,7 @@ use std::fmt;
 use thiserror::Error;
 
 /// Error type for MQTT connection
-pub type ConnectionError = client::Error;
+pub type ConnectionError = client::ConnectionReasonCode;
 /// Error type for completion tokens
 pub type CompletionError = client::token::CompletionError;
 /// Error subtype for MQTT connection error caused by state

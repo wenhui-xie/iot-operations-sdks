@@ -49,7 +49,7 @@ pub mod reconnect_policy;
 #[allow(clippy::module_inception)]
 // This isn't ideal naming, but it'd be inconsistent otherwise.
 pub mod session; // TODO: Make this private and accessible via compile flags
-mod state;
+pub(crate) mod state;
 mod wrapper;
 
 use std::fmt;

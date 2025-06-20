@@ -4,6 +4,8 @@
 //! Adapter layer for the rumqttc crate
 
 use std::{fmt, fs, time::Duration};
+use std::cell::RefCell;
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use bytes::{BytesMut, Bytes};
@@ -23,6 +25,8 @@ use crate::interface::{
 };
 use crate::topic::{TopicFilter, TopicName};
 use crate::session::receiver::IncomingPublishDispatcher;
+use crate::session::reconnect_policy::ReconnectPolicy;
+use crate::session::state::SessionState;
 
 pub type ClientAlias = client::Client<Bytes>;
 pub type EventLoopAlias = client::Session<BytesMut>;
@@ -230,8 +234,8 @@ impl MqttDisconnect for client::Client<Bytes> {
 #[async_trait(?Send)]
 impl MqttEventLoop for client::Session<BytesMut> {
     async fn poll(&mut self) -> Result<Event, ConnectionError> {
-        self.run().await;
-        Ok(())
+        let reason_code = self.run().await;
+        Err(reason_code)
     }
 
     fn set_clean_start(&mut self, clean_start: bool) {
@@ -246,8 +250,17 @@ impl MqttEventLoop for client::Session<BytesMut> {
         
     }
 
-    fn set_publish_callback(&mut self, callback: PublishCallback<Bytes>) {
+    fn set_publish_callback(&mut self, callback: PublishCallback) {
         self.set_publish_callback(Some(callback));
+    }
+
+    fn set_connection_callback(&mut self, state: Arc<SessionState>, reconnect_policy: Box<dyn ReconnectPolicy>) {
+        let callback = ConnectionCallbackImpl {
+            state,
+            reconnect_policy,
+            prev_reconnect_attempts: RefCell::new(0),
+        };
+        self.set_connection_callback(Some(Box::new(callback)));
     }
 }
 
@@ -303,6 +316,56 @@ pub fn client(
 impl<A: MqttAck + Clone + Send + Sync + 'static> client::PublishCallback<Bytes> for IncomingPublishDispatcher<A> {
     async fn publish(&self, publish: codec::packet::Publish<Bytes>) {
         let _ = self.dispatch_publish(&publish);
+    }
+}
+
+struct ConnectionCallbackImpl {
+    state: Arc<SessionState>,
+    reconnect_policy: Box<dyn ReconnectPolicy>,
+    prev_reconnect_attempts: RefCell<u32>,
+}
+
+impl client::ConnectionCallback<Bytes> for ConnectionCallbackImpl {
+    fn status(&self, status: &client::ConnectionStatus, options: &mut client::options::ConnectionOptions<Bytes>) -> Option<Duration>
+    {
+        log::info!("Connection status: {status:?}");
+        match status {
+            client::ConnectionStatus::Connected => {
+
+                // Update connection state
+                self.state.transition_connected();
+
+                // Reset the counter on reconnect attempts
+                self.prev_reconnect_attempts.replace(0);
+
+                // Set clean start to false for subsequent connections
+                options.set_clean_start(false);
+
+                None
+            }
+            client::ConnectionStatus::Disconnected(reason) => {
+                    self.state.transition_disconnected();
+
+                    // Always log the error itself at error level
+                    log::error!("Error: {reason:?}");
+                    let mut count = self.prev_reconnect_attempts.borrow_mut();
+
+                    // Defer decision to reconnect policy
+                    if let Some(delay) = self
+                        .reconnect_policy
+                        .next_reconnect_delay(*count, &reason)
+                    {
+                        *count += 1;
+                        Some(delay)
+                    } else {
+                        None
+                    }
+            }
+            _ => {
+                // For other statuses, we don't need to do anything special
+                None
+            }
+        }
     }
 }
 

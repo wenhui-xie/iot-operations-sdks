@@ -356,7 +356,7 @@ impl MqttEventLoop for MockEventLoop {
     async fn poll(&mut self) -> Result<Event, ConnectionError> {
         match self.rx.recv().await {
             Some(e) => Ok(e),
-            None => Err(ConnectionError::UnexpectedEof),
+            None => Err(ConnectionError::InternalReasonCode(client::session::InternalReasonCode::IoError)),
         }
     }
 
