@@ -840,7 +840,7 @@ where
                                                 response_arguments.invalid_property_name =
                                                     Some(UserProperty::Timestamp.to_string());
                                                 response_arguments.invalid_property_value =
-                                                    Some(value.into());
+                                                    Some(value);
                                                 match e.kind() {
                                                     HLCErrorKind::ClockDrift => {
                                                         response_arguments.status_code =
