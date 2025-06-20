@@ -272,7 +272,7 @@ pub fn client(
         mqtt_options_builder = mqtt_options_builder.with_user_property(key, value);
     }
 
-    let (mut session,  client) = client::Session::new(connection_settings.hostname, connection_settings.tcp_port, mqtt_options_builder.build(), channel_capacity, channel_capacity);
+    let (mut session,  client) = client::Session::new(connection_settings.hostname, connection_settings.tcp_port, mqtt_options_builder.build(), channel_capacity);
     session.set_manual_ack(manual_ack);
 
     // Set the TLS connector.
