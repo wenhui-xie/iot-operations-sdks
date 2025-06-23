@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::SystemTime;
 use std::{collections::HashMap, marker::PhantomData, time::Duration};
 
-use azure_iot_operations_mqtt::control_packet::{PublishProperties, QoS};
+use azure_iot_operations_mqtt::control_packet::{PublishPropertiesBuilder, QoS};
 use azure_iot_operations_mqtt::interface::ManagedClient;
 use bytes::Bytes;
 use chrono::{DateTime, SecondsFormat, Utc};
@@ -458,16 +458,17 @@ where
         ));
 
         // Create MQTT Properties
-        let publish_properties = PublishProperties {
-            correlation_data: Some(correlation_data),
-            response_topic: None,
-            payload_format_indicator: Some(message.serialized_payload.format_indicator as u8),
-            content_type: Some(message.serialized_payload.content_type.to_string()),
-            message_expiry_interval: Some(message_expiry_interval),
-            user_properties: message.custom_user_data,
-            topic_alias: None,
-            subscription_identifiers: Vec::new(),
-        };
+        let mut builder = PublishPropertiesBuilder::new()
+            .with_correlation_data(correlation_data)
+            .with_payload_format_indicator(message.serialized_payload.format_indicator as u8)
+            .with_content_type(message.serialized_payload.content_type)
+            .with_message_expiry_interval(message_expiry_interval);
+
+        for (key, value) in message.custom_user_data {
+            builder = builder.with_user_property(key, value);
+        }
+
+        let publish_properties = builder.build();
 
         // Send publish
         let publish_result = self

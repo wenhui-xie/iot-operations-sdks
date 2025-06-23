@@ -3,7 +3,7 @@
 
 use std::{collections::HashMap, marker::PhantomData, str::FromStr, sync::Arc, time::Duration};
 
-use azure_iot_operations_mqtt::control_packet::{Publish, PublishProperties, QoS};
+use azure_iot_operations_mqtt::control_packet::{Publish, PublishPropertiesBuilder, QoS};
 use azure_iot_operations_mqtt::interface::{ManagedClient, PubReceiver};
 use bytes::Bytes;
 use iso8601_duration;
@@ -358,7 +358,7 @@ where
         for (key, value) in publish_properties.user_properties {
             match UserProperty::from_str(&key) {
                 Ok(p) if expected_aio_properties.contains(&p) => {
-                    response_aio_data.insert(p, value);
+                    response_aio_data.insert(p, value.to_string());
                 }
                 Ok(_) => {
                     log::warn!(
@@ -469,7 +469,7 @@ where
         let command_result = match status_code {
             // Response with payload
             StatusCode::Ok | StatusCode::NoContent => {
-                let content_type = publish_properties.content_type;
+                let content_type = publish_properties.content_type.map(|s|s.to_string());
                 let format_indicator = publish_properties.payload_format_indicator.try_into().unwrap_or_else(|e| {
                     log::error!("Received invalid payload format indicator: {e}. This should not be possible to receive from the broker. Using default.");
                     FormatIndicator::default()
@@ -515,7 +515,7 @@ where
                     payload,
                     content_type,
                     format_indicator,
-                    custom_user_data: response_custom_user_data,
+                    custom_user_data: response_custom_user_data.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
                     timestamp,
                 })
             }
@@ -982,16 +982,19 @@ where
         ));
 
         // Create MQTT Properties
-        let publish_properties = PublishProperties {
-            correlation_data: Some(correlation_data.clone()),
-            response_topic: Some(response_topic),
-            payload_format_indicator: Some(request.serialized_payload.format_indicator as u8),
-            content_type: Some(request.serialized_payload.content_type.to_string()),
-            message_expiry_interval: Some(message_expiry_interval),
-            user_properties: request.custom_user_data,
-            topic_alias: None,
-            subscription_identifiers: Vec::new(),
-        };
+        let mut builder = PublishPropertiesBuilder::new()
+            .with_correlation_data(correlation_data.clone())
+            .with_response_topic(response_topic)
+            .with_payload_format_indicator(request.serialized_payload.format_indicator as u8)
+            .with_content_type(request.serialized_payload.content_type)
+            .with_message_expiry_interval(message_expiry_interval);
+
+        for (key, value) in request.custom_user_data {
+            // Add user properties
+            builder = builder.with_user_property(key, value);
+        }
+
+        let publish_properties = builder.build();
 
         // Subscribe to the response topic if we're not already subscribed and the invoker hasn't been shutdown
         {

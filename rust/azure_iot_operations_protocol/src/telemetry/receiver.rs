@@ -248,7 +248,7 @@ where
         for (key, value) in publish_properties.user_properties {
             match UserProperty::from_str(&key) {
                 Ok(p) if expected_aio_properties.contains(&p) => {
-                    telemetry_aio_data.insert(p, value);
+                    telemetry_aio_data.insert(p, value.to_string());
                 }
                 Ok(_) => {
                     log::warn!(
@@ -294,7 +294,7 @@ where
             .map_err(|e| e.to_string())?;
 
         // Parse topic
-        let topic = std::str::from_utf8(&value.topic)
+        let topic = std::str::from_utf8(&value.topic.as_binarydata())
             .map_err(|e| e.to_string())?
             .to_string();
 
@@ -303,7 +303,7 @@ where
             log::error!("Received invalid payload format indicator: {e}. This should not be possible to receive from the broker. Using default.");
             FormatIndicator::default()
         });
-        let content_type = publish_properties.content_type;
+        let content_type = publish_properties.content_type.map(|ct| ct.to_string());
         let payload = T::deserialize(&value.payload, content_type.as_ref(), &format_indicator)
             .map_err(|e| format!("{e:?}"))?;
 
@@ -311,7 +311,7 @@ where
             payload,
             content_type,
             format_indicator,
-            custom_user_data: telemetry_custom_user_data,
+            custom_user_data: telemetry_custom_user_data.into_iter().map(|(k, v)| (k.to_string(), v.to_string())).collect(),
             sender_id: telemetry_aio_data.remove(&UserProperty::SourceId),
             timestamp,
             // NOTE: Topic Tokens cannot be created from just a Publish, they need additional information

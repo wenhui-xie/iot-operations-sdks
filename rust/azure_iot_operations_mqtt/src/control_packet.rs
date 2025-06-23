@@ -15,11 +15,15 @@ pub type Publish = codec::packet::Publish<Bytes>;
 
 /// Properties for a CONNECT packet
 pub type ConnectProperties = codec::packet::ConnectProperties<Bytes>;
+pub type ConnectPropertiesBuilder = codec::packet::ConnectPropertiesBuilder<Bytes>;
 /// Properties for a PUBLISH packet
 pub type PublishProperties = codec::packet::PublishProperties<Bytes>;
+pub type PublishPropertiesBuilder = codec::packet::PublishPropertiesBuilder<Bytes>;
 /// Properties for a SUBSCRIBE packet
 pub type SubscribeProperties = codec::packet::SubscribeProperties<Bytes>;
+pub type SubscribePropertiesBuilder = codec::packet::SubscribePropertiesBuilder<Bytes>;
 /// Properties for a UNSUBSCRIBE packet
 pub type UnsubscribeProperties = codec::packet::UnsubscribeProperties<Bytes>;
+pub type UnsubscribePropertiesBuilder = codec::packet::UnsubscribePropertiesBuilder<Bytes>;
 /// Properties for an AUTH packet
 pub type AuthProperties = rumqttc::v5::mqttbytes::v5::AuthProperties;

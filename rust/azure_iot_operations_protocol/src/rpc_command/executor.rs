@@ -691,7 +691,7 @@ where
                     let mut command_expiration_time_calculated = false;
                     let mut response_arguments = ResponseArguments {
                         command_name: self.command_name.clone(),
-                        response_topic,
+                        response_topic: response_topic.to_string(),
                         correlation_data: None,
                         status_code: StatusCode::Ok,
                         status_message: None,
@@ -828,6 +828,9 @@ where
                         let mut timestamp = None;
                         let mut invoker_id = None;
                         for (key, value) in properties.user_properties {
+                            let key = key.to_string();
+                            let value = value.to_string();
+                            
                             match UserProperty::from_str(&key) {
                                 Ok(UserProperty::Timestamp) => {
                                     match HybridLogicalClock::from_str(&value) {
@@ -890,7 +893,7 @@ where
                             }
                         }
 
-                        let topic = match std::str::from_utf8(&m.topic) {
+                        let topic = match std::str::from_utf8(&m.topic.as_binarydata()) {
                             Ok(topic) => topic,
                             Err(e) => {
                                 // This should never happen as the topic is always a valid UTF-8 string from the MQTT client
@@ -916,9 +919,12 @@ where
                                 FormatIndicator::default()
                             }
                         };
+
+                        let content_type = properties.content_type.map(|s| s.to_string());
+
                         let payload = match TReq::deserialize(
                             &m.payload,
-                            properties.content_type.as_ref(),
+                            content_type.as_ref(),
                             &format_indicator,
                         ) {
                             Ok(payload) => payload,
@@ -937,7 +943,7 @@ where
                                     response_arguments.invalid_property_name =
                                         Some("Content Type".to_string());
                                     response_arguments.invalid_property_value =
-                                        Some(properties.content_type.unwrap_or("None".to_string()));
+                                        Some(content_type.unwrap_or("None".to_string()));
                                     break 'process_request;
                                 }
                             },
@@ -948,7 +954,7 @@ where
 
                         let command_request = Request {
                             payload,
-                            content_type: properties.content_type,
+                            content_type,
                             format_indicator,
                             custom_user_data: user_data,
                             timestamp,
@@ -1212,12 +1218,12 @@ where
             // Create publish properties
             publish_properties.payload_format_indicator =
                 Some(serialized_payload.format_indicator.clone() as u8);
-            publish_properties.topic_alias = None;
-            publish_properties.response_topic = None;
             publish_properties.correlation_data = response_arguments.correlation_data;
-            publish_properties.user_properties = user_properties;
-            publish_properties.subscription_identifiers = Vec::new();
-            publish_properties.content_type = Some(serialized_payload.content_type.to_string());
+
+            for (key, value) in user_properties {
+                publish_properties.user_properties.push((key.into(), value.into()));
+            }
+            publish_properties.content_type = Some(serialized_payload.content_type.clone().into());
         };
 
         match response_arguments.command_expiration_time {
