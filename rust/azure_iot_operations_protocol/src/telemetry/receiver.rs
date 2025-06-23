@@ -294,9 +294,9 @@ where
             .map_err(|e| e.to_string())?;
 
         // Parse topic
-        let topic = std::str::from_utf8(&value.topic.as_binarydata())
-            .map_err(|e| e.to_string())?
-            .to_string();
+        // let topic = std::str::from_utf8(&value.topic)
+        //     .map_err(|e| e.to_string())?
+        //     .to_string();
 
         // Deserialize payload
         let format_indicator = publish_properties.payload_format_indicator.try_into().unwrap_or_else(|e| {
@@ -316,7 +316,7 @@ where
             timestamp,
             // NOTE: Topic Tokens cannot be created from just a Publish, they need additional information
             topic_tokens: HashMap::default(),
-            topic,
+            topic: value.topic.to_string(),
         };
         Ok(telemetry_message)
     }

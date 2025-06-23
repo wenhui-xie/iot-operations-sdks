@@ -893,18 +893,18 @@ where
                             }
                         }
 
-                        let topic = match std::str::from_utf8(&m.topic.as_binarydata()) {
-                            Ok(topic) => topic,
-                            Err(e) => {
-                                // This should never happen as the topic is always a valid UTF-8 string from the MQTT client
-                                response_arguments.status_code = StatusCode::BadRequest;
-                                response_arguments.status_message =
-                                    Some(format!("Error deserializing topic: {e:?}"));
-                                break 'process_request;
-                            }
-                        };
+                        // let topic = match std::str::from_utf8(&m.topic) {
+                        //     Ok(topic) => topic,
+                        //     Err(e) => {
+                        //         // This should never happen as the topic is always a valid UTF-8 string from the MQTT client
+                        //         response_arguments.status_code = StatusCode::BadRequest;
+                        //         response_arguments.status_message =
+                        //             Some(format!("Error deserializing topic: {e:?}"));
+                        //         break 'process_request;
+                        //     }
+                        // };
 
-                        let topic_tokens = self.request_topic_pattern.parse_tokens(topic);
+                        let topic_tokens = self.request_topic_pattern.parse_tokens(&m.topic);
 
                         // Deserialize payload
                         let format_indicator = match properties.payload_format_indicator.try_into()
